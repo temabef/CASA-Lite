@@ -41,7 +41,7 @@ def add_cors_headers(response):
 app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads')
 app.config['OUTPUT_FOLDER'] = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'output')
 app.config['ALLOWED_EXTENSIONS'] = {'mp4', 'avi', 'mov', 'wmv'}
-app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024  # 20MB max upload size
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB max upload size for Render free tier
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-for-flask-sessions')
 app.config['MAX_FRAMES'] = 10  # Extremely conservative for Render free tier  # Default max frames to process (reduced for cloud deployment)
 
@@ -50,7 +50,7 @@ Path(app.config['UPLOAD_FOLDER']).mkdir(exist_ok=True, parents=True)
 Path(app.config['OUTPUT_FOLDER']).mkdir(exist_ok=True, parents=True)
 
 # Tell Flask to increase the maximum request size
-app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024  # 20MB max upload size
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024  # 5MB max upload size for Render free tier
 
 def allowed_file(filename):
     """Check if file extension is allowed"""
