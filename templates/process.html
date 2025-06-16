@@ -161,6 +161,10 @@
         <h1>Processing Video - CASA-Lite</h1>
         <p>Analyzing file: <strong>{{ filename }}</strong></p>
         
+        <div id="renderNotice" style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 5px; margin-bottom: 15px; display: none;">
+            <strong>Demo Mode:</strong> This Render deployment uses simulated data instead of processing actual video files to conserve resources. For full functionality, please run the application locally.
+        </div>
+        
         <div id="alertContainer"></div>
         
         <div class="upload-form" id="analysisOptionsForm">
@@ -292,23 +296,30 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const analysisForm = document.getElementById('analysisOptions');
-            const analysisOptionsForm = document.getElementById('analysisOptionsForm');
+            const analysisContainer = document.getElementById('analysisOptionsForm');
             const processingContainer = document.getElementById('processingContainer');
-            const progressFill = document.getElementById('progressFill');
-            const statusText = document.getElementById('status');
-            const resultsDiv = document.getElementById('results');
-            const errorContainer = document.getElementById('errorContainer');
-            const errorMessage = document.getElementById('errorMessage');
-            const errorDetails = document.getElementById('errorDetails');
-            const viewReportLink = document.getElementById('viewReport');
+            const resultsContainer = document.getElementById('results');
             const alertContainer = document.getElementById('alertContainer');
             const cancelBtn = document.getElementById('cancelBtn');
+            const progressFill = document.getElementById('progressFill');
+            const statusText = document.getElementById('status');
+            const viewReportLink = document.getElementById('viewReport');
             const retryBtn = document.getElementById('retryBtn');
             
             // Get values from hidden fields
             const filepath = document.getElementById('filepathField').value;
             const sessionId = document.getElementById('sessionIdField').value;
             const debugMode = document.getElementById('debugModeField').value === 'true';
+            
+            // Check if running on Render.com (will be determined by server)
+            fetch('/check-environment')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.is_render) {
+                        document.getElementById('renderNotice').style.display = 'block';
+                    }
+                })
+                .catch(error => console.error('Error checking environment:', error));
             
             // Processing steps elements
             const steps = [
@@ -362,14 +373,14 @@
             // Retry button handler
             retryBtn.addEventListener('click', function() {
                 errorContainer.style.display = 'none';
-                analysisOptionsForm.style.display = 'block';
+                analysisContainer.style.display = 'block';
             });
             
             // Cancel button handler
             cancelBtn.addEventListener('click', function() {
                 if (confirm('Are you sure you want to cancel the analysis?')) {
                     processingContainer.style.display = 'none';
-                    analysisOptionsForm.style.display = 'block';
+                    analysisContainer.style.display = 'block';
                     updateProcessingStep(0, 'reset');
                 }
             });
@@ -383,7 +394,7 @@
                 debugLog("Max frames: " + maxFrames);
                 
                 // Hide form, show processing
-                analysisOptionsForm.style.display = 'none';
+                analysisContainer.style.display = 'none';
                 processingContainer.style.display = 'block';
                 
                 // Reset steps and activate first step
@@ -494,9 +505,9 @@
                         // Show results after a short delay
                         setTimeout(() => {
                             processingContainer.style.display = 'none';
-                            resultsDiv.style.display = 'block';
-                            resultsDiv.classList.add('fade-in');
-                            resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            resultsContainer.style.display = 'block';
+                            resultsContainer.classList.add('fade-in');
+                            resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
                         }, 1000);
                     } else {
                         processingContainer.style.display = 'none';

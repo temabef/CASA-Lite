@@ -68,6 +68,10 @@
         <h1>CASA-Lite</h1>
         <p class="tagline">An affordable Computer-Assisted Sperm Analysis Tool for fish reproduction research</p>
         
+        <div id="render-notice" style="background-color: #cce5ff; color: #004085; padding: 15px; border-radius: 5px; margin: 20px 0; display: none;">
+            <strong>Demo Mode:</strong> This Render deployment uses simulated data instead of processing actual video files to conserve resources. For full functionality, please run the application locally. <a href="https://github.com/temabef/CASA-Lite" target="_blank">Get the code on GitHub</a>.
+        </div>
+        
         <div id="alert-container"></div>
         
         <div class="instructions">
@@ -139,6 +143,16 @@
             const uploadMessage = document.querySelector('.upload-message');
             const alertContainer = document.getElementById('alert-container');
             const fileInput = document.getElementById('videoUpload');
+            
+            // Check if running on Render.com
+            fetch('/check-environment')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.is_render) {
+                        document.getElementById('render-notice').style.display = 'block';
+                    }
+                })
+                .catch(error => console.error('Error checking environment:', error));
             
             // Add file size validation
             fileInput.addEventListener('change', function() {

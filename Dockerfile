@@ -23,6 +23,7 @@ RUN chmod 777 uploads output
 # Set environment variables
 ENV FLASK_APP=src.app_fixed
 ENV PYTHONUNBUFFERED=1
+ENV RENDER=true
 
 # Expose port
 EXPOSE 5000
