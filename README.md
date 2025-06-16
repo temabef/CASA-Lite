@@ -2,6 +2,10 @@
 
 A computer vision-based tool for analyzing fish sperm motility and quality parameters, designed as an affordable alternative to commercial CASA systems.
 
+## Documentation
+
+Visit our documentation site: [https://temabef.github.io/CASA-Lite/](https://temabef.github.io/CASA-Lite/)
+
 ## Overview
 
 CASA-Lite analyzes fish sperm motility using computer vision techniques. It can process microscopy videos to:
