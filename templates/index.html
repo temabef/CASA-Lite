@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CASA-Lite: Computer-Assisted Sperm Analysis Tool</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>CASA-Lite</h1>
+        <p>Upload a video file containing microscopy footage of fish sperm cells to analyze motility parameters.</p>
+        
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+            <div class="alert">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+        
+        <div class="upload-form">
+            <form action="/upload" method="post" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="video">Select video file:</label>
+                    <input type="file" name="video" id="video" accept=".mp4,.avi,.mov,.wmv">
+                </div>
+                <div class="form-group">
+                    <label><input type="checkbox" name="debug"> Enable debug mode</label>
+                </div>
+                <div class="form-group">
+                    <label>Max frames: <input type="number" name="max_frames" placeholder="All frames"></label>
+                </div>
+                <button type="submit" class="submit-btn">Upload & Analyze</button>
+            </form>
+        </div>
+        
+        <div class="features">
+            <h2>Features</h2>
+            <ul>
+                <li><strong>Track Individual Sperm Cells</strong>: Automatically detect and track sperm movement across frames</li>
+                <li><strong>Calculate Motility Parameters</strong>: VCL, VSL, LIN, and more key parameters</li>
+                <li><strong>Generate Visual Reports</strong>: Trajectories, velocity distributions, and detailed analysis</li>
+                <li><strong>Simple Interface</strong>: Easy to use without specialized training</li>
+            </ul>
+        </div>
+        
+        <div class="instructions">
+            <h2>Instructions</h2>
+            <ol>
+                <li>Record microscopy video (phase contrast recommended)</li>
+                <li>Upload the video using the form above</li>
+                <li>Wait for the analysis to complete</li>
+                <li>Review results and download the detailed report</li>
+            </ol>
+        </div>
+        
+        <div class="footer">
+            <p>CASA-Lite: An affordable Computer-Assisted Sperm Analysis Tool</p>
+            <p>Developed by Saheed Kolawole</p>
+        </div>
+    </div>
+</body>
+</html> 

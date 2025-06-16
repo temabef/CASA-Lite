@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Processing Video - CASA-Lite</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Processing Video - CASA-Lite</h1>
+        <p>Analyzing file: <strong>{{ filename }}</strong></p>
+        
+        <div class="progress">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div id="status">Initializing analysis...</div>
+        
+        <div class="results" id="results">
+            <h2>Analysis Results</h2>
+            <table>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Value</th>
+                </tr>
+                <tr>
+                    <td>Total Sperm Count</td>
+                    <td id="totalCount">-</td>
+                </tr>
+                <tr>
+                    <td>Motile Sperm</td>
+                    <td id="motileCount">-</td>
+                </tr>
+                <tr>
+                    <td>Motility Percentage</td>
+                    <td id="motilityPercent">-</td>
+                </tr>
+                <tr>
+                    <td>Average VCL</td>
+                    <td id="avgVCL">-</td>
+                </tr>
+                <tr>
+                    <td>Average VSL</td>
+                    <td id="avgVSL">-</td>
+                </tr>
+                <tr>
+                    <td>Linearity (LIN)</td>
+                    <td id="lin">-</td>
+                </tr>
+            </table>
+            
+            <div class="result-actions">
+                <a href="#" class="view-report" id="viewReport">View Full Report</a>
+            </div>
+            
+            <div class="processing-info">
+                <h3>What's happening?</h3>
+                <ol>
+                    <li>Video frames are being extracted and processed</li>
+                    <li>Sperm cells are being detected and tracked across frames</li>
+                    <li>Motility parameters are being calculated</li>
+                    <li>Visualizations and reports are being generated</li>
+                </ol>
+            </div>
+        </div>
+        
+        <div id="errorContainer" style="display: none;">
+            <h2>Error</h2>
+            <p id="errorMessage" style="color: red; font-weight: bold;"></p>
+            <p><a href="/" class="submit-btn" style="display: inline-block; margin-top: 20px;">Go back to main page</a></p>
+        </div>
+        
+        <div class="footer">
+            <p>CASA-Lite: An affordable Computer-Assisted Sperm Analysis Tool</p>
+            <p>Developed by Saheed Kolawole</p>
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const progressBar = document.getElementById('progressBar');
+            const statusText = document.getElementById('status');
+            const resultsDiv = document.getElementById('results');
+            const errorContainer = document.getElementById('errorContainer');
+            const errorMessage = document.getElementById('errorMessage');
+            const viewReportLink = document.getElementById('viewReport');
+            
+            // Simulate progress
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                if (progress < 90) {
+                    progress += Math.random() * 5;
+                    progressBar.style.width = `${Math.min(progress, 90)}%`;
+                }
+            }, 500);
+            
+            statusText.textContent = "Processing video...";
+            
+            // Send AJAX request to analyze video
+            fetch('/analyze', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    filepath: '{{ filepath }}',
+                    session_id: '{{ session_id }}',
+                    debug: {{ 'true' if request.args.get('debug') else 'false' }}
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                clearInterval(progressInterval);
+                
+                if (data.success) {
+                    // Update progress to 100%
+                    progressBar.style.width = '100%';
+                    statusText.textContent = "Analysis complete!";
+                    
+                    // Display results
+                    document.getElementById('totalCount').textContent = data.summary.total_count;
+                    document.getElementById('motileCount').textContent = data.summary.motile_count;
+                    document.getElementById('motilityPercent').textContent = 
+                        `${data.summary.motility_percent.toFixed(1)}%`;
+                    document.getElementById('avgVCL').textContent = 
+                        `${data.summary.vcl.toFixed(2)} μm/s`;
+                    document.getElementById('avgVSL').textContent = 
+                        `${data.summary.vsl.toFixed(2)} μm/s`;
+                    document.getElementById('lin').textContent = data.summary.lin.toFixed(2);
+                    
+                    // Set report link
+                    viewReportLink.href = data.summary.report_url;
+                    
+                    // Show results
+                    resultsDiv.style.display = 'block';
+                } else {
+                    statusText.textContent = "Analysis failed";
+                    progressBar.style.backgroundColor = 'red';
+                    errorMessage.textContent = data.error || "An error occurred";
+                    errorContainer.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                clearInterval(progressInterval);
+                statusText.textContent = "Analysis failed";
+                progressBar.style.backgroundColor = 'red';
+                errorMessage.textContent = "Failed to communicate with server";
+                errorContainer.style.display = 'block';
+            });
+        });
+    </script>
+</body>
+</html> 
