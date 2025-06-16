@@ -36,7 +36,7 @@ class VideoProcessor:
         # Performance settings
         self.max_resolution = (640, 480)  # Maximum resolution to process
         self.cpu_threshold = 90  # CPU usage threshold to slow down processing
-        self.process_delay = 0.01  # Small delay to prevent CPU overload
+        self.process_delay = 0.05  # Larger delay for cloud deployment to prevent CPU overload
         
         self._setup_logging()
         
@@ -159,10 +159,13 @@ class VideoProcessor:
         frames = []
         frame_count = 0
         
-        # Adjust frame processing based on available memory
-        if available_memory < 100:  # Less than 100MB available
-            process_limit = min(max_frames if max_frames else 10, self.frame_count)
+        # Adjust frame processing based on available memory - extremely conservative for Render
+        if available_memory < 150:  # Less than 150MB available
+            process_limit = min(max_frames if max_frames else 5, self.frame_count)
             self.logger.warning(f"Low memory ({available_memory:.1f}MB). Reducing processing to {process_limit} frames")
+        elif available_memory < 250:  # Less than 250MB available
+            process_limit = min(max_frames if max_frames else 10, self.frame_count)
+            self.logger.warning(f"Limited memory ({available_memory:.1f}MB). Reducing processing to {process_limit} frames")
         else:
             process_limit = min(max_frames if max_frames else self.max_frames, self.frame_count)
         

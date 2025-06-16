@@ -429,7 +429,7 @@
                 
                 // Create an abort controller for timeout
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 seconds timeout
+                const timeoutId = setTimeout(() => controller.abort(), 180000); // 180 seconds timeout for Render
                 
                 // Fetch with abort signal
                 fetch('/analyze', {
@@ -524,9 +524,11 @@
                     } else if (error.message.includes("NetworkError")) {
                         errorMsg = "Network error. The server may be overloaded or connection was interrupted.";
                     } else if (error.message.includes("timeout")) {
-                        errorMsg = "Request timed out. The video processing may be taking too long.";
+                        errorMsg = "Request timed out. On the free tier, processing may take longer than expected. Try again with a shorter video or reduce the max frames.";
                     } else if (error.message.includes("JSON")) {
                         errorMsg = "Error processing server response. The server may be returning invalid data.";
+                    } else if (error.message.includes("503")) {
+                        errorMsg = "The server is temporarily unavailable due to resource constraints. This is common on free hosting - please try again in a few minutes.";
                     }
                     
                     showAlert(errorMsg, true);

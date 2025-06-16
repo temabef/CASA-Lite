@@ -43,7 +43,7 @@ app.config['OUTPUT_FOLDER'] = os.path.join(os.path.dirname(os.path.dirname(__fil
 app.config['ALLOWED_EXTENSIONS'] = {'mp4', 'avi', 'mov', 'wmv'}
 app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024  # 20MB max upload size
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-for-flask-sessions')
-app.config['MAX_FRAMES'] = 15  # Default max frames to process (reduced for cloud deployment)
+app.config['MAX_FRAMES'] = 10  # Extremely conservative for Render free tier  # Default max frames to process (reduced for cloud deployment)
 
 # Create necessary directories
 Path(app.config['UPLOAD_FOLDER']).mkdir(exist_ok=True, parents=True)
@@ -211,6 +211,16 @@ def process_video():
 @app.route('/analyze', methods=['OPTIONS', 'POST'])
 def analyze():
     """Analyze video and return results"""
+    # Check available memory before processing
+    import psutil
+    available_memory = psutil.virtual_memory().available / (1024 * 1024)  # in MB
+    if available_memory < 150:  # Less than 150MB available
+        logger.warning(f"Low memory before processing: {available_memory:.1f}MB")
+        return jsonify({
+            'success': False,
+            'error': f"Server is low on resources. Please try again later. Available memory: {available_memory:.1f}MB"
+        }), 503
+        
     if request.method == 'OPTIONS':
         # Handle CORS preflight request
         return '', 204  # No content needed for preflight response
@@ -611,11 +621,22 @@ def analyze():
             'report_url': url_for('results', session_id=session_id)
         }
         
+        # Force garbage collection to free memory
+        gc.collect()
+        
         return jsonify({
             'success': True,
             'summary': summary
         })
         
+    except MemoryError as me:
+        logger.critical(f"Memory error during analysis: {str(me)}")
+        # Force garbage collection
+        gc.collect()
+        return jsonify({
+            'success': False,
+            'error': "Server ran out of memory. Try reducing video length or quality."
+        }), 503
     except Exception as e:
         logger.error(f"Error during analysis: {str(e)}")
         logger.error(traceback.format_exc())
