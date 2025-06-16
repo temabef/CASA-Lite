@@ -43,7 +43,7 @@ app.config['OUTPUT_FOLDER'] = os.path.join(os.path.dirname(os.path.dirname(__fil
 app.config['ALLOWED_EXTENSIONS'] = {'mp4', 'avi', 'mov', 'wmv'}
 app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024  # 20MB max upload size
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-for-flask-sessions')
-app.config['MAX_FRAMES'] = 30  # Default max frames to process
+app.config['MAX_FRAMES'] = 15  # Default max frames to process (reduced for cloud deployment)
 
 # Create necessary directories
 Path(app.config['UPLOAD_FOLDER']).mkdir(exist_ok=True, parents=True)
@@ -109,6 +109,12 @@ def dashboard():
                           avg_vcl=avg_vcl,
                           avg_lin=avg_lin,
                           analysis_history=analysis_history)
+
+@app.route('/favicon.ico')
+def favicon():
+    """Serve favicon to avoid 404 errors"""
+    return send_from_directory(os.path.join(app.root_path, '..', 'static'),
+                               'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
 @app.route('/about')
 def about():
@@ -625,7 +631,7 @@ def generate_trajectory_visualization(output_dir):
     os.makedirs(output_dir, exist_ok=True)
     
     try:
-        plt.figure(figsize=(10, 8))
+        plt.figure(figsize=(8, 6))
         
         # Generate some sample trajectory data
         num_tracks = 20
@@ -649,7 +655,7 @@ def generate_trajectory_visualization(output_dir):
         # Save to file and get base64
         img_path = os.path.join(output_dir, "trajectories.png")
         logger.info(f"Saving trajectory visualization to {img_path}")
-        plt.savefig(img_path, dpi=150)
+        plt.savefig(img_path, dpi=100, format='png', bbox_inches='tight', pad_inches=0.1, optimize=True)
         plt.close()
         
         # Convert to base64
@@ -660,14 +666,14 @@ def generate_trajectory_visualization(output_dir):
     except Exception as e:
         logger.error(f"Error generating trajectory visualization: {str(e)}")
         # Create a simple error image
-        plt.figure(figsize=(10, 8))
+        plt.figure(figsize=(8, 6))
         plt.text(0.5, 0.5, "Error generating visualization", 
                 horizontalalignment='center', verticalalignment='center', fontsize=14)
         plt.axis('off')
         
         # Save to file and get base64
         img_path = os.path.join(output_dir, "trajectories.png")
-        plt.savefig(img_path, dpi=150)
+        plt.savefig(img_path, dpi=100, format='png', bbox_inches='tight', pad_inches=0.1, optimize=True)
         plt.close()
         
         # Convert to base64
@@ -682,7 +688,7 @@ def generate_velocity_visualization(output_dir, results):
     os.makedirs(output_dir, exist_ok=True)
     
     try:
-        fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+        fig, ax = plt.subplots(1, 3, figsize=(12, 4))
         
         # Generate sample data based on the results
         vcl_data = np.random.normal(results['vcl'], max(results['vcl']/5, 0.1), 100)
@@ -712,7 +718,7 @@ def generate_velocity_visualization(output_dir, results):
         # Save to file and get base64
         img_path = os.path.join(output_dir, "velocity_distribution.png")
         logger.info(f"Saving velocity visualization to {img_path}")
-        plt.savefig(img_path, dpi=150)
+        plt.savefig(img_path, dpi=100, format='png', bbox_inches='tight', pad_inches=0.1, optimize=True)
         plt.close()
         
         # Convert to base64
@@ -730,7 +736,7 @@ def generate_velocity_visualization(output_dir, results):
         
         # Save to file and get base64
         img_path = os.path.join(output_dir, "velocity_distribution.png")
-        plt.savefig(img_path, dpi=150)
+        plt.savefig(img_path, dpi=100, format='png', bbox_inches='tight', pad_inches=0.1, optimize=True)
         plt.close()
         
         # Convert to base64
@@ -848,15 +854,15 @@ def cleanup_old_files(max_age_hours=24):
 # Add a before_request handler to periodically clean up old files
 @app.before_request
 def before_request():
-    # Store the day timestamp in the app context
-    day_timestamp = int(time.time() / 86400)  # Current day (86400 seconds in a day)
+    # Store the hour timestamp in the app context
+    hour_timestamp = int(time.time() / 3600)  # Current hour (3600 seconds in an hour)
     
-    # Only run cleanup once per day to avoid performance impact
-    if not hasattr(app, 'last_cleanup_day') or app.last_cleanup_day < day_timestamp:
-        app.last_cleanup_day = day_timestamp
+    # Run cleanup once per hour for cloud deployment
+    if not hasattr(app, 'last_cleanup_hour') or app.last_cleanup_hour < hour_timestamp:
+        app.last_cleanup_hour = hour_timestamp
         # Run cleanup in a separate thread to avoid blocking the request
         import threading
-        cleanup_thread = threading.Thread(target=cleanup_old_files)
+        cleanup_thread = threading.Thread(target=lambda: cleanup_old_files(max_age_hours=1))
         cleanup_thread.daemon = True
         cleanup_thread.start()
 

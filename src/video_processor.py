@@ -100,8 +100,8 @@ class VideoProcessor:
         if self.frame_count <= max_frames:
             return 1
         
-        # For very long videos, ensure we sample from beginning, middle and end
-        if self.frame_count > max_frames * 10:
+        # For cloud deployment, be more aggressive with frame skipping
+        if self.frame_count > max_frames * 5:
             return max(1, self.frame_count // max_frames)
         
         # For moderately long videos, use a more balanced approach
@@ -153,9 +153,18 @@ class VideoProcessor:
             if not self.open_video():
                 return []
         
+        # Monitor available memory
+        available_memory = psutil.virtual_memory().available / (1024 * 1024)  # in MB
+        
         frames = []
         frame_count = 0
-        process_limit = min(max_frames if max_frames else self.max_frames, self.frame_count)
+        
+        # Adjust frame processing based on available memory
+        if available_memory < 100:  # Less than 100MB available
+            process_limit = min(max_frames if max_frames else 10, self.frame_count)
+            self.logger.warning(f"Low memory ({available_memory:.1f}MB). Reducing processing to {process_limit} frames")
+        else:
+            process_limit = min(max_frames if max_frames else self.max_frames, self.frame_count)
         
         self.logger.info(f"Extracting {process_limit} frames")
         
