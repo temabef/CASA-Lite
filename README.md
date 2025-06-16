@@ -43,7 +43,7 @@ CASA-Lite analyzes fish sperm motility using computer vision techniques. It can 
 
 1. Clone this repository:
 ```
-git clone https://github.com/yourusername/CASA-Lite.git
+git clone https://github.com/temabef/CASA-Lite.git
 cd CASA-Lite
 ```
 
