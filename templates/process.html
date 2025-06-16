@@ -2,20 +2,238 @@
 <html>
 <head>
     <title>Processing Video - CASA-Lite</title>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/static/style.css">
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        .processing-steps {
+            margin: 20px 0;
+            counter-reset: step;
+        }
+        
+        .processing-step {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: var(--border-radius);
+            background-color: #f8f9fa;
+            opacity: 0.5;
+            transition: all 0.3s ease;
+        }
+        
+        .processing-step.active {
+            opacity: 1;
+            background-color: rgba(52, 152, 219, 0.1);
+            border-left: 4px solid var(--secondary-color);
+        }
+        
+        .processing-step.completed {
+            opacity: 0.8;
+            border-left: 4px solid var(--accent-color);
+        }
+        
+        .step-number {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #ddd;
+            color: #666;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .processing-step.active .step-number {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+        
+        .processing-step.completed .step-number {
+            background-color: var(--accent-color);
+            color: white;
+        }
+        
+        .step-content {
+            flex: 1;
+        }
+        
+        .step-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .step-description {
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .slide-in {
+            animation: slideIn 0.5s;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        #status {
+            font-weight: bold;
+            text-align: center;
+            margin: 15px 0;
+            color: var(--secondary-color);
+        }
+        
+        .cancel-btn {
+            background-color: #e74c3c;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-top: 10px;
+            transition: background-color 0.3s;
+        }
+        
+        .cancel-btn:hover {
+            background-color: #c0392b;
+        }
+        
+        .back-btn {
+            display: inline-block;
+            margin: 20px 0;
+            padding: 0.75rem 1.5rem;
+            background-color: #7f8c8d;
+            color: white;
+            text-align: center;
+            text-decoration: none;
+            border-radius: var(--border-radius);
+            transition: background-color 0.3s;
+        }
+        
+        .back-btn:hover {
+            background-color: #6c7a7d;
+        }
+    </style>
 </head>
 <body>
+    <header>
+        <div class="header-content">
+            <div class="logo">
+                <img src="/static/images/logo.svg" alt="CASA-Lite Logo">
+            </div>
+            <nav>
+                <a href="/">Home</a>
+                <a href="/dashboard">Dashboard</a>
+                <a href="/about">About</a>
+            </nav>
+        </div>
+    </header>
+
     <div class="container">
         <h1>Processing Video - CASA-Lite</h1>
         <p>Analyzing file: <strong>{{ filename }}</strong></p>
         
-        <div class="progress">
-            <div class="progress-bar" id="progressBar"></div>
-        </div>
-        <div id="status">Initializing analysis...</div>
+        <div id="alertContainer"></div>
         
-        <div class="results" id="results">
+        <div class="upload-form" id="analysisOptionsForm">
+            <h2>Analysis Options</h2>
+            <form id="analysisOptions">
+                <!-- Hidden fields to store values safely -->
+                <input type="hidden" id="filepathField" value="{{ filepath }}">
+                <input type="hidden" id="sessionIdField" value="{{ session_id }}">
+                <input type="hidden" id="debugModeField" value="{{ 'true' if debug else 'false' }}">
+                
+                <div class="form-group">
+                    <label for="maxFrames">Maximum frames to process:</label>
+                    <input type="number" id="maxFrames" name="maxFrames" value="{{ max_frames }}" min="10" max="1000">
+                    <small>Lower values process faster but may be less accurate.</small>
+                </div>
+                <button type="submit" class="submit-btn pulse">Start Analysis</button>
+            </form>
+        </div>
+        
+        <div id="processingContainer" style="display: none;" class="fade-in">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <div id="status">Initializing analysis...</div>
+            
+            <div class="processing-steps">
+                <div class="processing-step" id="step1">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <div class="step-title">Video Loading</div>
+                        <div class="step-description">Loading and preparing video frames for analysis</div>
+                    </div>
+                </div>
+                
+                <div class="processing-step" id="step2">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <div class="step-title">Sperm Detection</div>
+                        <div class="step-description">Detecting and identifying individual sperm cells</div>
+                    </div>
+                </div>
+                
+                <div class="processing-step" id="step3">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <div class="step-title">Trajectory Tracking</div>
+                        <div class="step-description">Tracking movement paths across video frames</div>
+                    </div>
+                </div>
+                
+                <div class="processing-step" id="step4">
+                    <div class="step-number">4</div>
+                    <div class="step-content">
+                        <div class="step-title">Motility Analysis</div>
+                        <div class="step-description">Calculating motility parameters and statistics</div>
+                    </div>
+                </div>
+                
+                <div class="processing-step" id="step5">
+                    <div class="step-number">5</div>
+                    <div class="step-content">
+                        <div class="step-title">Visualization Generation</div>
+                        <div class="step-description">Creating trajectory maps and distribution charts</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <button id="cancelBtn" class="cancel-btn">Cancel Analysis</button>
+            </div>
+        </div>
+        
+        <div class="results" id="results" style="display: none;">
             <h2>Analysis Results</h2>
             <table>
                 <tr>
@@ -49,102 +267,241 @@
             </table>
             
             <div class="result-actions">
-                <a href="#" class="view-report" id="viewReport">View Full Report</a>
-            </div>
-            
-            <div class="processing-info">
-                <h3>What's happening?</h3>
-                <ol>
-                    <li>Video frames are being extracted and processed</li>
-                    <li>Sperm cells are being detected and tracked across frames</li>
-                    <li>Motility parameters are being calculated</li>
-                    <li>Visualizations and reports are being generated</li>
-                </ol>
+                <a href="#" class="view-report primary-action" id="viewReport" style="padding: 1.2rem 3rem; font-size: 1.25rem; min-width: 220px; text-align: center;">View Full Report</a>
+                <a href="/" class="submit-btn secondary-action" style="display: inline-block; margin-left: 15px; padding: 0.6rem 1rem; font-size: 0.9rem;">Analyze Another Video</a>
             </div>
         </div>
         
-        <div id="errorContainer" style="display: none;">
+        <div id="errorContainer" style="display: none;" class="slide-in">
             <h2>Error</h2>
             <p id="errorMessage" style="color: red; font-weight: bold;"></p>
-            <p><a href="/" class="submit-btn" style="display: inline-block; margin-top: 20px;">Go back to main page</a></p>
+            <div id="errorDetails" style="margin-top: 10px; font-family: monospace; background: #f5f5f5; padding: 10px; display: none;"></div>
+            <p>
+                <a href="/" class="back-btn">Go back to main page</a>
+                <button id="retryBtn" class="submit-btn" style="margin-left: 15px;">Try Again</button>
+            </p>
         </div>
         
         <div class="footer">
             <p>CASA-Lite: An affordable Computer-Assisted Sperm Analysis Tool</p>
             <p>Developed by Saheed Kolawole</p>
+            <p><a href="https://github.com/temabef/CASA-Lite" target="_blank">GitHub Repository</a> | <a href="https://temabef.github.io/CASA-Lite/" target="_blank">Documentation</a></p>
         </div>
     </div>
     
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const progressBar = document.getElementById('progressBar');
+            const analysisForm = document.getElementById('analysisOptions');
+            const analysisOptionsForm = document.getElementById('analysisOptionsForm');
+            const processingContainer = document.getElementById('processingContainer');
+            const progressFill = document.getElementById('progressFill');
             const statusText = document.getElementById('status');
             const resultsDiv = document.getElementById('results');
             const errorContainer = document.getElementById('errorContainer');
             const errorMessage = document.getElementById('errorMessage');
+            const errorDetails = document.getElementById('errorDetails');
             const viewReportLink = document.getElementById('viewReport');
+            const alertContainer = document.getElementById('alertContainer');
+            const cancelBtn = document.getElementById('cancelBtn');
+            const retryBtn = document.getElementById('retryBtn');
             
-            // Simulate progress
-            let progress = 0;
-            const progressInterval = setInterval(() => {
-                if (progress < 90) {
-                    progress += Math.random() * 5;
-                    progressBar.style.width = `${Math.min(progress, 90)}%`;
+            // Get values from hidden fields
+            const filepath = document.getElementById('filepathField').value;
+            const sessionId = document.getElementById('sessionIdField').value;
+            const debugMode = document.getElementById('debugModeField').value === 'true';
+            
+            // Processing steps elements
+            const steps = [
+                document.getElementById('step1'),
+                document.getElementById('step2'),
+                document.getElementById('step3'),
+                document.getElementById('step4'),
+                document.getElementById('step5')
+            ];
+            
+            // Debug helper
+            function debugLog(message) {
+                if (debugMode) {
+                    console.log("[DEBUG] " + message);
                 }
-            }, 500);
+            }
             
-            statusText.textContent = "Processing video...";
-            
-            // Send AJAX request to analyze video
-            fetch('/analyze', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    filepath: '{{ filepath }}',
-                    session_id: '{{ session_id }}',
-                    debug: {{ 'true' if request.args.get('debug') else 'false' }}
-                }),
-            })
-            .then(response => response.json())
-            .then(data => {
-                clearInterval(progressInterval);
+            function showAlert(message, isError = false) {
+                alertContainer.innerHTML = `<div class="alert${isError ? ' alert-error' : ' alert-success'}">${message}</div>`;
                 
-                if (data.success) {
-                    // Update progress to 100%
-                    progressBar.style.width = '100%';
-                    statusText.textContent = "Analysis complete!";
-                    
-                    // Display results
-                    document.getElementById('totalCount').textContent = data.summary.total_count;
-                    document.getElementById('motileCount').textContent = data.summary.motile_count;
-                    document.getElementById('motilityPercent').textContent = 
-                        `${data.summary.motility_percent.toFixed(1)}%`;
-                    document.getElementById('avgVCL').textContent = 
-                        `${data.summary.vcl.toFixed(2)} μm/s`;
-                    document.getElementById('avgVSL').textContent = 
-                        `${data.summary.vsl.toFixed(2)} μm/s`;
-                    document.getElementById('lin').textContent = data.summary.lin.toFixed(2);
-                    
-                    // Set report link
-                    viewReportLink.href = data.summary.report_url;
-                    
-                    // Show results
-                    resultsDiv.style.display = 'block';
-                } else {
-                    statusText.textContent = "Analysis failed";
-                    progressBar.style.backgroundColor = 'red';
-                    errorMessage.textContent = data.error || "An error occurred";
-                    errorContainer.style.display = 'block';
+                // Auto-hide after 5 seconds
+                setTimeout(() => {
+                    alertContainer.innerHTML = '';
+                }, 5000);
+            }
+            
+            function updateProcessingStep(stepIndex, status) {
+                // Reset all steps
+                if (status === 'reset') {
+                    steps.forEach(step => {
+                        step.className = 'processing-step';
+                    });
+                    return;
                 }
-            })
-            .catch(error => {
-                clearInterval(progressInterval);
-                statusText.textContent = "Analysis failed";
-                progressBar.style.backgroundColor = 'red';
-                errorMessage.textContent = "Failed to communicate with server";
-                errorContainer.style.display = 'block';
+                
+                // Update specific step
+                if (stepIndex >= 0 && stepIndex < steps.length) {
+                    if (status === 'active') {
+                        steps[stepIndex].className = 'processing-step active';
+                        
+                        // Mark previous steps as completed
+                        for (let i = 0; i < stepIndex; i++) {
+                            steps[i].className = 'processing-step completed';
+                        }
+                    } else if (status === 'completed') {
+                        steps[stepIndex].className = 'processing-step completed';
+                    }
+                }
+            }
+            
+            // Retry button handler
+            retryBtn.addEventListener('click', function() {
+                errorContainer.style.display = 'none';
+                analysisOptionsForm.style.display = 'block';
+            });
+            
+            // Cancel button handler
+            cancelBtn.addEventListener('click', function() {
+                if (confirm('Are you sure you want to cancel the analysis?')) {
+                    processingContainer.style.display = 'none';
+                    analysisOptionsForm.style.display = 'block';
+                    updateProcessingStep(0, 'reset');
+                }
+            });
+            
+            analysisForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                debugLog("Form submitted");
+                
+                // Get max frames value
+                const maxFrames = parseInt(document.getElementById('maxFrames').value);
+                debugLog("Max frames: " + maxFrames);
+                
+                // Hide form, show processing
+                analysisOptionsForm.style.display = 'none';
+                processingContainer.style.display = 'block';
+                
+                // Reset steps and activate first step
+                updateProcessingStep(0, 'reset');
+                updateProcessingStep(0, 'active');
+                
+                // Progress animation is handled by CSS
+                statusText.textContent = "Loading video...";
+                debugLog("Starting AJAX request");
+                debugLog("Filepath: " + filepath);
+                debugLog("Session ID: " + sessionId);
+                
+                // Simulate step progression
+                let currentStep = 0;
+                let progress = 0;
+                
+                const stepInterval = setInterval(() => {
+                    progress += 5;
+                    
+                    if (progress >= 20 && currentStep === 0) {
+                        currentStep = 1;
+                        updateProcessingStep(currentStep, 'active');
+                        statusText.textContent = "Detecting sperm cells...";
+                    } else if (progress >= 40 && currentStep === 1) {
+                        currentStep = 2;
+                        updateProcessingStep(currentStep, 'active');
+                        statusText.textContent = "Tracking trajectories...";
+                    } else if (progress >= 60 && currentStep === 2) {
+                        currentStep = 3;
+                        updateProcessingStep(currentStep, 'active');
+                        statusText.textContent = "Analyzing motility parameters...";
+                    } else if (progress >= 80 && currentStep === 3) {
+                        currentStep = 4;
+                        updateProcessingStep(currentStep, 'active');
+                        statusText.textContent = "Generating visualizations...";
+                    }
+                    
+                    progressFill.style.width = `${Math.min(progress, 95)}%`;
+                }, 500);
+                
+                // Send AJAX request to analyze video
+                fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        filepath: filepath,
+                        session_id: sessionId,
+                        debug: debugMode,
+                        max_frames: maxFrames
+                    }),
+                })
+                .then(response => {
+                    debugLog("Response received: " + response.status);
+                    if (!response.ok) {
+                        return response.json().then(data => {
+                            throw new Error(data.error || `HTTP error! Status: ${response.status}`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    debugLog("Data received: " + JSON.stringify(data));
+                    clearInterval(stepInterval);
+                    
+                    if (data.success) {
+                        // Complete all steps
+                        for (let i = 0; i <= 4; i++) {
+                            updateProcessingStep(i, 'completed');
+                        }
+                        
+                        progressFill.style.width = '100%';
+                        statusText.textContent = "Analysis complete!";
+                        
+                        // Display results
+                        document.getElementById('totalCount').textContent = data.summary.total_count;
+                        document.getElementById('motileCount').textContent = data.summary.motile_count;
+                        document.getElementById('motilityPercent').textContent = 
+                            `${data.summary.motility_percent.toFixed(1)}%`;
+                        document.getElementById('avgVCL').textContent = 
+                            `${data.summary.vcl.toFixed(2)} μm/s`;
+                        document.getElementById('avgVSL').textContent = 
+                            `${data.summary.vsl.toFixed(2)} μm/s`;
+                        document.getElementById('lin').textContent = data.summary.lin.toFixed(2);
+                        
+                        // Set report link
+                        viewReportLink.href = data.summary.report_url;
+                        
+                        // Show results after a short delay
+                        setTimeout(() => {
+                            processingContainer.style.display = 'none';
+                            resultsDiv.style.display = 'block';
+                            resultsDiv.classList.add('fade-in');
+                            resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }, 1000);
+                    } else {
+                        processingContainer.style.display = 'none';
+                        showAlert(data.error || "An error occurred during analysis", true);
+                        errorMessage.textContent = data.error || "An error occurred";
+                        if (data.details) {
+                            errorDetails.textContent = data.details;
+                            errorDetails.style.display = 'block';
+                        }
+                        errorContainer.style.display = 'block';
+                        errorContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                })
+                .catch(error => {
+                    debugLog("Error: " + error.message);
+                    clearInterval(stepInterval);
+                    processingContainer.style.display = 'none';
+                    showAlert("Failed to communicate with server: " + error.message, true);
+                    errorMessage.textContent = "Failed to communicate with server: " + error.message;
+                    errorContainer.style.display = 'block';
+                    errorContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    console.error('Error:', error);
+                });
             });
         });
     </script>

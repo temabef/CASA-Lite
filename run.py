@@ -18,7 +18,8 @@ if __name__ == "__main__":
     parser.add_argument("--video", type=str, help="Path to input video file")
     parser.add_argument("--output", type=str, default="output", help="Output directory")
     parser.add_argument("--web", action="store_true", help="Start web interface")
-    parser.add_argument("--debug", action="store_true", help="Enable debug mode")
+    parser.add_argument("--debug", action="store_true", default=True, help="Enable debug mode")
+    parser.add_argument("--max-frames", type=int, default=300, help="Maximum number of frames to process")
     
     args = parser.parse_args()
     main(args) 

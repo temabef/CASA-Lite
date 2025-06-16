@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CASA-Lite Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .dashboard-card {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        .stats-container {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+        .stat-box {
+            background: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 15px;
+            margin: 10px 0;
+            width: calc(50% - 30px);
+            box-sizing: border-box;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .stat-label {
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .history-table th, .history-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .history-table th {
+            background-color: #f8f9fa;
+            color: #2c3e50;
+        }
+        .history-table tr:hover {
+            background-color: #f1f1f1;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">
+                <img src="/static/images/logo.svg" alt="CASA-Lite Logo">
+            </div>
+            <nav>
+                <a href="/">Home</a>
+                <a href="/dashboard" class="active">Dashboard</a>
+                <a href="/about">About</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <h1>Analysis Dashboard</h1>
+        <p>View and compare your sperm analysis results</p>
+        
+        <div class="dashboard-grid">
+            <div class="dashboard-card">
+                <h2>Recent Analysis</h2>
+                <div class="stats-container">
+                    <div class="stat-box">
+                        <div class="stat-value">{{ recent_count }}</div>
+                        <div class="stat-label">Total Analyses</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">{{ avg_motility }}%</div>
+                        <div class="stat-label">Avg. Motility</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">{{ avg_vcl }} μm/s</div>
+                        <div class="stat-label">Avg. VCL</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">{{ avg_lin }}</div>
+                        <div class="stat-label">Avg. Linearity</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="dashboard-card">
+                <h2>Motility Comparison</h2>
+                <div class="chart-container">
+                    <canvas id="motilityChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="dashboard-card">
+            <h2>Analysis History</h2>
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>File</th>
+                        <th>Total Count</th>
+                        <th>Motility %</th>
+                        <th>VCL (μm/s)</th>
+                        <th>VSL (μm/s)</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for analysis in analysis_history %}
+                    <tr>
+                        <td>{{ analysis.date }}</td>
+                        <td>{{ analysis.filename }}</td>
+                        <td>{{ analysis.total_count }}</td>
+                        <td>{{ analysis.motility_percent }}%</td>
+                        <td>{{ analysis.vcl }}</td>
+                        <td>{{ analysis.vsl }}</td>
+                        <td>
+                            <a href="/results/{{ analysis.session_id }}">View Report</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="dashboard-grid">
+            <div class="dashboard-card">
+                <h2>Velocity Distribution</h2>
+                <div class="chart-container">
+                    <canvas id="velocityChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="dashboard-card">
+                <h2>Linearity Analysis</h2>
+                <div class="chart-container">
+                    <canvas id="linearityChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Sample data - this would be replaced with actual data from your backend
+        const analysisLabels = ['Sample 1', 'Sample 2', 'Sample 3', 'Sample 4', 'Sample 5'];
+        const motilityData = [67.5, 72.3, 58.9, 63.2, 70.1];
+        const vclData = [45.2, 52.8, 38.7, 42.5, 49.3];
+        const vslData = [28.4, 32.1, 22.6, 25.8, 30.5];
+        const linData = [0.62, 0.58, 0.65, 0.60, 0.63];
+        
+        // Motility Chart
+        const motilityCtx = document.getElementById('motilityChart').getContext('2d');
+        new Chart(motilityCtx, {
+            type: 'bar',
+            data: {
+                labels: analysisLabels,
+                datasets: [{
+                    label: 'Motility %',
+                    data: motilityData,
+                    backgroundColor: 'rgba(52, 152, 219, 0.7)',
+                    borderColor: 'rgba(52, 152, 219, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                }
+            }
+        });
+        
+        // Velocity Chart
+        const velocityCtx = document.getElementById('velocityChart').getContext('2d');
+        new Chart(velocityCtx, {
+            type: 'line',
+            data: {
+                labels: analysisLabels,
+                datasets: [{
+                    label: 'VCL (μm/s)',
+                    data: vclData,
+                    backgroundColor: 'rgba(46, 204, 113, 0.2)',
+                    borderColor: 'rgba(46, 204, 113, 1)',
+                    borderWidth: 2,
+                    tension: 0.3
+                }, {
+                    label: 'VSL (μm/s)',
+                    data: vslData,
+                    backgroundColor: 'rgba(155, 89, 182, 0.2)',
+                    borderColor: 'rgba(155, 89, 182, 1)',
+                    borderWidth: 2,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+        
+        // Linearity Chart
+        const linearityCtx = document.getElementById('linearityChart').getContext('2d');
+        new Chart(linearityCtx, {
+            type: 'radar',
+            data: {
+                labels: analysisLabels,
+                datasets: [{
+                    label: 'Linearity Index',
+                    data: linData,
+                    backgroundColor: 'rgba(231, 76, 60, 0.2)',
+                    borderColor: 'rgba(231, 76, 60, 1)',
+                    borderWidth: 2,
+                    pointBackgroundColor: 'rgba(231, 76, 60, 1)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        beginAtZero: true,
+                        max: 1
+                    }
+                }
+            }
+        });
+    </script>
+    
+    <div class="footer">
+        <p>CASA-Lite: An affordable Computer-Assisted Sperm Analysis Tool</p>
+        <p>Developed by Saheed Kolawole</p>
+        <p><a href="https://github.com/temabef/CASA-Lite" target="_blank">GitHub Repository</a> | <a href="https://temabef.github.io/CASA-Lite/" target="_blank">Documentation</a></p>
+    </div>
+</body>
+</html> 

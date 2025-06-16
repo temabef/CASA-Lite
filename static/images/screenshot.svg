@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800" height="400" viewBox="0 0 800 400" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="800" height="400" fill="#f8f9fa" />
+  
+  <!-- Header -->
+  <rect width="800" height="60" fill="#2c3e50" />
+  <text x="30" y="38" font-family="Arial" font-size="24" fill="white">CASA-Lite: Computer-Assisted Sperm Analysis</text>
+  
+  <!-- Main content area -->
+  <rect x="20" y="80" width="760" height="300" rx="8" fill="white" stroke="#ddd" />
+  
+  <!-- Left panel - Upload form -->
+  <rect x="40" y="100" width="300" height="260" rx="5" fill="#f8f9fa" stroke="#ddd" />
+  <text x="60" y="130" font-family="Arial" font-size="16" font-weight="bold" fill="#333">Upload Video</text>
+  <rect x="60" y="150" width="260" height="40" rx="4" fill="white" stroke="#ccc" />
+  <text x="70" y="175" font-family="Arial" font-size="12" fill="#777">Select microscopy video file...</text>
+  <rect x="60" y="210" width="120" height="30" rx="4" fill="#3498db" />
+  <text x="85" y="230" font-family="Arial" font-size="14" fill="white">Upload</text>
+  
+  <!-- Right panel - Results visualization -->
+  <rect x="360" y="100" width="400" height="260" rx="5" fill="#f8f9fa" stroke="#ddd" />
+  <text x="380" y="130" font-family="Arial" font-size="16" font-weight="bold" fill="#333">Analysis Results</text>
+  
+  <!-- Sperm trajectory plot -->
+  <rect x="380" y="150" width="360" height="190" rx="4" fill="white" stroke="#ccc" />
+  
+  <!-- Sample trajectories -->
+  <path d="M400,250 C420,220 440,260 460,230 C480,210 500,250 520,220" stroke="#3498db" stroke-width="2" fill="none" />
+  <path d="M450,280 C470,250 490,290 510,260 C530,240 550,280 570,250" stroke="#2ecc71" stroke-width="2" fill="none" />
+  <path d="M480,200 C500,170 520,210 540,180 C560,160 580,200 600,170" stroke="#e74c3c" stroke-width="2" fill="none" />
+  <path d="M430,300 C450,270 470,310 490,280 C510,260 530,300 550,270" stroke="#f39c12" stroke-width="2" fill="none" />
+  <path d="M520,230 C540,200 560,240 580,210 C600,190 620,230 640,200" stroke="#9b59b6" stroke-width="2" fill="none" />
+  
+  <!-- Axes -->
+  <line x1="380" y1="320" x2="740" y2="320" stroke="#333" stroke-width="1" />
+  <line x1="380" y1="150" x2="380" y2="320" stroke="#333" stroke-width="1" />
+  
+  <!-- Legend -->
+  <rect x="600" y="160" width="120" height="70" rx="4" fill="rgba(255,255,255,0.8)" />
+  <text x="610" y="180" font-family="Arial" font-size="12" fill="#333">VCL: 45.2 μm/s</text>
+  <text x="610" y="200" font-family="Arial" font-size="12" fill="#333">VSL: 28.4 μm/s</text>
+  <text x="610" y="220" font-family="Arial" font-size="12" fill="#333">LIN: 0.62</text>
+</svg> 

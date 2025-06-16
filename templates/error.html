@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Error - CASA-Lite</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .error-container {
+            text-align: center;
+            padding: 2rem;
+            animation: fadeIn 0.5s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .error-icon {
+            font-size: 4rem;
+            color: #e74c3c;
+            margin-bottom: 1rem;
+        }
+        
+        .error-message {
+            font-size: 1.2rem;
+            color: #333;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-radius: var(--border-radius);
+            border-left: 4px solid #e74c3c;
+        }
+        
+        .action-buttons {
+            margin-top: 2rem;
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+        
+        .back-button {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            background-color: var(--secondary-color);
+            color: white;
+            text-align: center;
+            text-decoration: none;
+            border-radius: var(--border-radius);
+            transition: background-color 0.3s;
+        }
+        
+        .back-button:hover {
+            background-color: #2980b9;
+        }
+        
+        .support-button {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            background-color: #7f8c8d;
+            color: white;
+            text-align: center;
+            text-decoration: none;
+            border-radius: var(--border-radius);
+            transition: background-color 0.3s;
+        }
+        
+        .support-button:hover {
+            background-color: #6c7a7d;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">
+                <img src="/static/images/logo.svg" alt="CASA-Lite Logo">
+            </div>
+            <nav>
+                <a href="/">Home</a>
+                <a href="/dashboard">Dashboard</a>
+                <a href="/about">About</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="error-container">
+            <div class="error-icon">⚠️</div>
+            <h1>Oops! Something went wrong</h1>
+            
+            <div class="error-message">
+                {{ message }}
+            </div>
+            
+            <p>Sorry for the inconvenience. Please try again or return to the home page.</p>
+            
+            <div class="action-buttons">
+                <a href="/" class="back-button">Return to Home</a>
+                <a href="https://github.com/temabef/CASA-Lite/issues" target="_blank" class="support-button">Report Issue</a>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>CASA-Lite: An affordable Computer-Assisted Sperm Analysis Tool</p>
+            <p>Developed by Saheed Kolawole</p>
+            <p><a href="https://github.com/temabef/CASA-Lite" target="_blank">GitHub Repository</a> | <a href="https://temabef.github.io/CASA-Lite/" target="_blank">Documentation</a></p>
+        </div>
+    </div>
+</body>
+</html> 

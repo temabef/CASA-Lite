@@ -2,36 +2,114 @@
 <html>
 <head>
     <title>CASA-Lite: Computer-Assisted Sperm Analysis Tool</title>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/static/style.css">
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        .upload-progress {
+            margin-top: 20px;
+        }
+        
+        .upload-status {
+            text-align: center;
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: var(--secondary-color);
+        }
+        
+        .upload-message {
+            text-align: center;
+            margin-top: 10px;
+            font-style: italic;
+            color: #666;
+        }
+        
+        .shake {
+            animation: shake 0.5s;
+        }
+        
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            50% { transform: translateX(10px); }
+            75% { transform: translateX(-10px); }
+            100% { transform: translateX(0); }
+        }
+        
+        .highlight {
+            animation: highlight 2s;
+        }
+        
+        @keyframes highlight {
+            0% { background-color: rgba(52, 152, 219, 0.3); }
+            100% { background-color: transparent; }
+        }
+    </style>
 </head>
 <body>
+    <header>
+        <div class="header-content">
+            <div class="logo">
+                <img src="/static/images/logo.svg" alt="CASA-Lite Logo">
+            </div>
+            <nav>
+                <a href="/" class="active">Home</a>
+                <a href="/dashboard">Dashboard</a>
+                <a href="/about">About</a>
+            </nav>
+        </div>
+    </header>
+
     <div class="container">
         <h1>CASA-Lite</h1>
-        <p>Upload a video file containing microscopy footage of fish sperm cells to analyze motility parameters.</p>
+        <p class="tagline">An affordable Computer-Assisted Sperm Analysis Tool for fish reproduction research</p>
         
-        {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            {% for message in messages %}
-            <div class="alert">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-        {% endwith %}
+        <div id="alert-container"></div>
         
-        <div class="upload-form">
-            <form action="/upload" method="post" enctype="multipart/form-data">
+        <div class="instructions">
+            <h2>Instructions</h2>
+            <ol>
+                <li><strong>Record microscopy video</strong> (phase contrast recommended for better cell visibility)</li>
+                <li>Upload the video using the form below</li>
+                <li>Wait for the analysis to complete</li>
+                <li>Review results and download the detailed report</li>
+            </ol>
+            <p><small><em>Note: Phase contrast microscopy enhances the contrast of transparent specimens like sperm cells without staining, making them more visible for analysis.</em></small></p>
+        </div>
+        
+        <div class="upload-form" id="upload-section">
+            <h2>Upload Video</h2>
+            <form id="upload-form" enctype="multipart/form-data">
                 <div class="form-group">
-                    <label for="video">Select video file:</label>
-                    <input type="file" name="video" id="video" accept=".mp4,.avi,.mov,.wmv">
+                    <label for="videoUpload">Upload Video File:</label>
+                    <input type="file" id="videoUpload" name="video" accept=".mp4,.avi,.mov,.wmv" required>
+                    <small>Supported formats: MP4, AVI, MOV, WMV. Maximum file size: 20MB.</small>
+                    <div class="compression-help">
+                        <p>Need to compress your video? <a href="https://www.freeconvert.com/video-compressor" target="_blank" rel="noopener noreferrer">Use this free online compression tool</a> to reduce the file size.</p>
+                    </div>
                 </div>
                 <div class="form-group">
-                    <label><input type="checkbox" name="debug"> Enable debug mode</label>
+                    <label><input type="checkbox" name="debug" id="debug"> Enable debug mode</label>
+                    <small>Provides additional information during processing</small>
                 </div>
                 <div class="form-group">
-                    <label>Max frames: <input type="number" name="max_frames" placeholder="All frames"></label>
+                    <label for="max_frames">Maximum frames to process:</label>
+                    <input type="number" name="max_frames" id="max_frames" value="20" min="10" max="1000">
+                    <small>Lower values process faster (recommended: 20)</small>
                 </div>
                 <button type="submit" class="submit-btn">Upload & Analyze</button>
             </form>
+            <div id="upload-progress" style="display:none;" class="upload-progress">
+                <div class="upload-status">Uploading video...</div>
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+                <div class="upload-message">Please wait while your video is being uploaded. This may take a few moments depending on the file size.</div>
+            </div>
         </div>
         
         <div class="features">
@@ -44,20 +122,142 @@
             </ul>
         </div>
         
-        <div class="instructions">
-            <h2>Instructions</h2>
-            <ol>
-                <li>Record microscopy video (phase contrast recommended)</li>
-                <li>Upload the video using the form above</li>
-                <li>Wait for the analysis to complete</li>
-                <li>Review results and download the detailed report</li>
-            </ol>
-        </div>
-        
         <div class="footer">
             <p>CASA-Lite: An affordable Computer-Assisted Sperm Analysis Tool</p>
             <p>Developed by Saheed Kolawole</p>
+            <p><a href="https://github.com/temabef/CASA-Lite" target="_blank">GitHub Repository</a> | <a href="https://temabef.github.io/CASA-Lite/" target="_blank">Documentation</a></p>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('upload-form');
+            const uploadSection = document.getElementById('upload-section');
+            const progressContainer = document.getElementById('upload-progress');
+            const progressFill = document.querySelector('.progress-fill');
+            const progressText = document.querySelector('.upload-status');
+            const uploadMessage = document.querySelector('.upload-message');
+            const alertContainer = document.getElementById('alert-container');
+            const fileInput = document.getElementById('videoUpload');
+            
+            // Add file size validation
+            fileInput.addEventListener('change', function() {
+                if (this.files.length > 0) {
+                    const fileSize = this.files[0].size / (1024 * 1024); // Convert to MB
+                    if (fileSize > 20) {
+                        showAlert(`File is too large (${fileSize.toFixed(2)}MB). Maximum size is 20MB.`, true);
+                        this.value = ''; // Clear the file input
+                    } else {
+                        showAlert(`Selected file: ${this.files[0].name} (${fileSize.toFixed(2)}MB)`, false);
+                    }
+                }
+            });
+            
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                if (!fileInput.files.length) {
+                    showAlert('Please select a video file to upload', true);
+                    fileInput.parentElement.classList.add('shake');
+                    setTimeout(() => {
+                        fileInput.parentElement.classList.remove('shake');
+                    }, 500);
+                    
+                    // Scroll to file input
+                    fileInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return;
+                }
+                
+                const formData = new FormData(form);
+                
+                // Show progress
+                form.style.display = 'none';
+                progressContainer.style.display = 'block';
+                uploadSection.classList.add('highlight');
+                
+                // Simulate upload progress
+                let progress = 0;
+                const progressInterval = setInterval(() => {
+                    if (progress < 95) {
+                        progress += Math.random() * 5;
+                        progressFill.style.width = `${Math.min(progress, 95)}%`;
+                        
+                        // Update messages based on progress
+                        if (progress < 30) {
+                            progressText.textContent = "Uploading video...";
+                            uploadMessage.textContent = "Please wait while your video is being uploaded.";
+                        } else if (progress < 60) {
+                            progressText.textContent = "Processing video...";
+                            uploadMessage.textContent = "Your video is being prepared for analysis.";
+                        } else {
+                            progressText.textContent = "Almost ready...";
+                            uploadMessage.textContent = "Finalizing upload and preparing for analysis.";
+                        }
+                    }
+                }, 500);
+                
+                fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(data => {
+                            throw new Error(data.error || `HTTP error! Status: ${response.status}`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    clearInterval(progressInterval);
+                    progressFill.style.width = '100%';
+                    progressText.textContent = "Upload complete!";
+                    uploadMessage.textContent = "Redirecting to analysis page...";
+                    
+                    if (data.success) {
+                        // Add a slight delay before redirecting for better UX
+                        setTimeout(() => {
+                            window.location.href = data.redirect_url;
+                        }, 1000);
+                    } else {
+                        // Show error and reset form
+                        showAlert(data.error || 'Unknown error occurred', true);
+                        form.style.display = 'block';
+                        progressContainer.style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    clearInterval(progressInterval);
+                    showAlert('Upload failed: ' + error.message, true);
+                    form.style.display = 'block';
+                    progressContainer.style.display = 'none';
+                });
+            });
+            
+            function showAlert(message, isError) {
+                const alertDiv = document.createElement('div');
+                alertDiv.className = `alert${isError ? ' alert-error' : ' alert-success'}`;
+                alertDiv.textContent = message;
+                
+                // Clear existing alerts
+                alertContainer.innerHTML = '';
+                alertContainer.appendChild(alertDiv);
+                
+                // Scroll to alert
+                alertContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Auto-hide after 5 seconds
+                setTimeout(() => {
+                    alertDiv.style.opacity = '0';
+                    alertDiv.style.transition = 'opacity 0.5s';
+                    setTimeout(() => {
+                        if (alertContainer.contains(alertDiv)) {
+                            alertContainer.removeChild(alertDiv);
+                        }
+                    }, 500);
+                }, 5000);
+            }
+        });
+    </script>
 </body>
 </html> 
