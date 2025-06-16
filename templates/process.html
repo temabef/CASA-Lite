@@ -425,6 +425,13 @@
                 }, 500);
                 
                 // Send AJAX request to analyze video
+                debugLog("Starting fetch request to /analyze endpoint");
+                
+                // Create an abort controller for timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 120000); // 120 seconds timeout
+                
+                // Fetch with abort signal
                 fetch('/analyze', {
                     method: 'POST',
                     headers: {
@@ -436,15 +443,26 @@
                         debug: debugMode,
                         max_frames: maxFrames
                     }),
+                    signal: controller.signal
                 })
                 .then(response => {
+                    clearTimeout(timeoutId); // Clear timeout on successful response
                     debugLog("Response received: " + response.status);
                     if (!response.ok) {
-                        return response.json().then(data => {
-                            throw new Error(data.error || `HTTP error! Status: ${response.status}`);
-                        });
+                        try {
+                            return response.json().then(data => {
+                                throw new Error(data.error || `HTTP error! Status: ${response.status}`);
+                            }).catch(jsonErr => {
+                                // Handle case where response is not valid JSON
+                                throw new Error(`HTTP error! Status: ${response.status}. Details: ${response.statusText}`);
+                            });
+                        } catch (parseErr) {
+                            throw new Error(`HTTP error! Status: ${response.status}. Could not parse response.`);
+                        }
                     }
-                    return response.json();
+                    return response.json().catch(err => {
+                        throw new Error("Failed to parse server response as JSON. The server may be overloaded.");
+                    });
                 })
                 .then(data => {
                     debugLog("Data received: " + JSON.stringify(data));
@@ -493,11 +511,32 @@
                     }
                 })
                 .catch(error => {
+                    clearTimeout(timeoutId); // Clear timeout on error
                     debugLog("Error: " + error.message);
                     clearInterval(stepInterval);
                     processingContainer.style.display = 'none';
-                    showAlert("Failed to communicate with server: " + error.message, true);
-                    errorMessage.textContent = "Failed to communicate with server: " + error.message;
+                    
+                    // Try to provide more specific error messages based on common issues
+                    let errorMsg = "Failed to communicate with server: " + error.message;
+                    
+                    if (error.message === "Failed to fetch") {
+                        errorMsg = "Failed to connect to server. Please check that the server is running and refresh the page.";
+                    } else if (error.message.includes("NetworkError")) {
+                        errorMsg = "Network error. The server may be overloaded or connection was interrupted.";
+                    } else if (error.message.includes("timeout")) {
+                        errorMsg = "Request timed out. The video processing may be taking too long.";
+                    } else if (error.message.includes("JSON")) {
+                        errorMsg = "Error processing server response. The server may be returning invalid data.";
+                    }
+                    
+                    showAlert(errorMsg, true);
+                    errorMessage.textContent = errorMsg;
+                    
+                    // Show a retry button more prominently
+                    document.getElementById('retryBtn').style.backgroundColor = '#2ecc71';
+                    document.getElementById('retryBtn').style.padding = '10px 20px';
+                    document.getElementById('retryBtn').style.fontSize = '1.1rem';
+                    
                     errorContainer.style.display = 'block';
                     errorContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     console.error('Error:', error);

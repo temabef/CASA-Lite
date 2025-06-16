@@ -29,6 +29,14 @@ app = Flask(__name__,
 # Set a secret key for session management
 app.secret_key = 'casa_lite_secret_key'
 
+# Add CORS headers to all responses
+@app.after_request
+def add_cors_headers(response):
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    return response
+
 # Configuration
 app.config['UPLOAD_FOLDER'] = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'uploads')
 app.config['OUTPUT_FOLDER'] = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'output')
@@ -194,9 +202,12 @@ def process_video():
                           debug=debug,
                           max_frames=max_frames)
 
-@app.route('/analyze', methods=['POST'])
+@app.route('/analyze', methods=['OPTIONS', 'POST'])
 def analyze():
     """Analyze video and return results"""
+    if request.method == 'OPTIONS':
+        # Handle CORS preflight request
+        return '', 204  # No content needed for preflight response
     try:
         data = request.get_json()
         filepath = data.get('filepath')
@@ -219,6 +230,16 @@ def analyze():
         # Create output directory
         output_dir = os.path.join(app.config['OUTPUT_FOLDER'], session_id)
         Path(output_dir).mkdir(exist_ok=True, parents=True)
+        
+        # Check if output directory exists
+        if not os.path.exists(output_dir):
+            logger.error(f"Failed to create output directory: {output_dir}")
+            return jsonify({
+                'success': False,
+                'error': f'Failed to create output directory: {output_dir}'
+            }), 500
+            
+        logger.info(f"Created output directory: {output_dir}")
         
         # Process video
         logger.info(f"Starting analysis of {filepath}")
@@ -600,77 +621,123 @@ def analyze():
 
 def generate_trajectory_visualization(output_dir):
     """Generate a visualization of sperm trajectories"""
-    plt.figure(figsize=(10, 8))
+    # Ensure output directory exists
+    os.makedirs(output_dir, exist_ok=True)
     
-    # Generate some sample trajectory data
-    num_tracks = 20
-    colors = plt.cm.jet(np.linspace(0, 1, num_tracks))
-    
-    for i in range(num_tracks):
-        # Create a random trajectory
-        x = np.cumsum(np.random.normal(0, 2, 30))
-        y = np.cumsum(np.random.normal(0, 2, 30))
+    try:
+        plt.figure(figsize=(10, 8))
         
-        # Plot the trajectory
-        plt.plot(x, y, color=colors[i], alpha=0.7, linewidth=1.5)
-        plt.scatter(x[0], y[0], color=colors[i], s=30, marker='o')  # Start point
-        plt.scatter(x[-1], y[-1], color=colors[i], s=50, marker='*')  # End point
-    
-    plt.title(f"Sperm Trajectories (n={num_tracks})")
-    plt.xlabel("X position (pixels)")
-    plt.ylabel("Y position (pixels)")
-    plt.grid(alpha=0.3)
-    
-    # Save to file and get base64
-    img_path = os.path.join(output_dir, "trajectories.png")
-    plt.savefig(img_path, dpi=150)
-    plt.close()
-    
-    # Convert to base64
-    with open(img_path, "rb") as img_file:
-        img_data = base64.b64encode(img_file.read()).decode('utf-8')
-    
-    return img_path, img_data
+        # Generate some sample trajectory data
+        num_tracks = 20
+        colors = plt.cm.jet(np.linspace(0, 1, num_tracks))
+        
+        for i in range(num_tracks):
+            # Create a random trajectory
+            x = np.cumsum(np.random.normal(0, 2, 30))
+            y = np.cumsum(np.random.normal(0, 2, 30))
+            
+            # Plot the trajectory
+            plt.plot(x, y, color=colors[i], alpha=0.7, linewidth=1.5)
+            plt.scatter(x[0], y[0], color=colors[i], s=30, marker='o')  # Start point
+            plt.scatter(x[-1], y[-1], color=colors[i], s=50, marker='*')  # End point
+        
+        plt.title(f"Sperm Trajectories (n={num_tracks})")
+        plt.xlabel("X position (pixels)")
+        plt.ylabel("Y position (pixels)")
+        plt.grid(alpha=0.3)
+        
+        # Save to file and get base64
+        img_path = os.path.join(output_dir, "trajectories.png")
+        logger.info(f"Saving trajectory visualization to {img_path}")
+        plt.savefig(img_path, dpi=150)
+        plt.close()
+        
+        # Convert to base64
+        with open(img_path, "rb") as img_file:
+            img_data = base64.b64encode(img_file.read()).decode('utf-8')
+        
+        return img_path, img_data
+    except Exception as e:
+        logger.error(f"Error generating trajectory visualization: {str(e)}")
+        # Create a simple error image
+        plt.figure(figsize=(10, 8))
+        plt.text(0.5, 0.5, "Error generating visualization", 
+                horizontalalignment='center', verticalalignment='center', fontsize=14)
+        plt.axis('off')
+        
+        # Save to file and get base64
+        img_path = os.path.join(output_dir, "trajectories.png")
+        plt.savefig(img_path, dpi=150)
+        plt.close()
+        
+        # Convert to base64
+        with open(img_path, "rb") as img_file:
+            img_data = base64.b64encode(img_file.read()).decode('utf-8')
+        
+        return img_path, img_data
 
 def generate_velocity_visualization(output_dir, results):
     """Generate velocity distribution histograms"""
-    fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+    # Ensure output directory exists
+    os.makedirs(output_dir, exist_ok=True)
     
-    # Generate sample data based on the results
-    vcl_data = np.random.normal(results['vcl'], results['vcl']/5, 100)
-    vsl_data = np.random.normal(results['vsl'], results['vsl']/5, 100)
-    lin_data = np.random.beta(5*results['lin'], 5*(1-results['lin']), 100)
-    
-    # Plot VCL (curvilinear velocity)
-    ax[0].hist(vcl_data, bins=15, color='blue', alpha=0.7)
-    ax[0].set_title('Curvilinear Velocity (VCL)')
-    ax[0].set_xlabel('Velocity (μm/s)')
-    ax[0].axvline(results['vcl'], color='red', linestyle='dashed', linewidth=2)
-    
-    # Plot VSL (straight-line velocity)
-    ax[1].hist(vsl_data, bins=15, color='green', alpha=0.7)
-    ax[1].set_title('Straight-line Velocity (VSL)')
-    ax[1].set_xlabel('Velocity (μm/s)')
-    ax[1].axvline(results['vsl'], color='red', linestyle='dashed', linewidth=2)
-    
-    # Plot linearity
-    ax[2].hist(lin_data, bins=15, color='red', alpha=0.7)
-    ax[2].set_title('Linearity (LIN)')
-    ax[2].set_xlabel('Linearity Index')
-    ax[2].axvline(results['lin'], color='blue', linestyle='dashed', linewidth=2)
-    
-    plt.tight_layout()
-    
-    # Save to file and get base64
-    img_path = os.path.join(output_dir, "velocity_distribution.png")
-    plt.savefig(img_path, dpi=150)
-    plt.close()
-    
-    # Convert to base64
-    with open(img_path, "rb") as img_file:
-        img_data = base64.b64encode(img_file.read()).decode('utf-8')
-    
-    return img_path, img_data
+    try:
+        fig, ax = plt.subplots(1, 3, figsize=(15, 5))
+        
+        # Generate sample data based on the results
+        vcl_data = np.random.normal(results['vcl'], max(results['vcl']/5, 0.1), 100)
+        vsl_data = np.random.normal(results['vsl'], max(results['vsl']/5, 0.1), 100)
+        lin_data = np.random.beta(5*max(results['lin'], 0.01), 5*max(1-results['lin'], 0.01), 100)
+        
+        # Plot VCL (curvilinear velocity)
+        ax[0].hist(vcl_data, bins=15, color='blue', alpha=0.7)
+        ax[0].set_title('Curvilinear Velocity (VCL)')
+        ax[0].set_xlabel('Velocity (μm/s)')
+        ax[0].axvline(results['vcl'], color='red', linestyle='dashed', linewidth=2)
+        
+        # Plot VSL (straight-line velocity)
+        ax[1].hist(vsl_data, bins=15, color='green', alpha=0.7)
+        ax[1].set_title('Straight-line Velocity (VSL)')
+        ax[1].set_xlabel('Velocity (μm/s)')
+        ax[1].axvline(results['vsl'], color='red', linestyle='dashed', linewidth=2)
+        
+        # Plot linearity
+        ax[2].hist(lin_data, bins=15, color='red', alpha=0.7)
+        ax[2].set_title('Linearity (LIN)')
+        ax[2].set_xlabel('Linearity Index')
+        ax[2].axvline(results['lin'], color='blue', linestyle='dashed', linewidth=2)
+        
+        plt.tight_layout()
+        
+        # Save to file and get base64
+        img_path = os.path.join(output_dir, "velocity_distribution.png")
+        logger.info(f"Saving velocity visualization to {img_path}")
+        plt.savefig(img_path, dpi=150)
+        plt.close()
+        
+        # Convert to base64
+        with open(img_path, "rb") as img_file:
+            img_data = base64.b64encode(img_file.read()).decode('utf-8')
+        
+        return img_path, img_data
+    except Exception as e:
+        logger.error(f"Error generating velocity visualization: {str(e)}")
+        # Create a simple error image
+        plt.figure(figsize=(15, 5))
+        plt.text(0.5, 0.5, "Error generating velocity visualization", 
+                horizontalalignment='center', verticalalignment='center', fontsize=14)
+        plt.axis('off')
+        
+        # Save to file and get base64
+        img_path = os.path.join(output_dir, "velocity_distribution.png")
+        plt.savefig(img_path, dpi=150)
+        plt.close()
+        
+        # Convert to base64
+        with open(img_path, "rb") as img_file:
+            img_data = base64.b64encode(img_file.read()).decode('utf-8')
+        
+        return img_path, img_data
 
 @app.route('/results/<session_id>')
 def results(session_id):
@@ -702,14 +769,30 @@ def handle_exception(e):
     
     # Check if the request expects JSON
     if request.path.startswith('/upload') or request.path.startswith('/analyze'):
-        return jsonify({
-            'success': False,
-            'error': str(e),
-            'details': traceback.format_exc() if app.debug else None
-        }), 500
+        # Ensure we return valid JSON for API endpoints
+        try:
+            error_details = traceback.format_exc() if app.debug else "Server error details hidden in production mode"
+            response = jsonify({
+                'success': False,
+                'error': str(e),
+                'details': error_details
+            })
+            return response, 500
+        except Exception as json_error:
+            # If JSON serialization fails, return a simpler response
+            logger.error(f"Error creating JSON error response: {str(json_error)}")
+            return jsonify({
+                'success': False,
+                'error': "Internal server error",
+                'details': "Error occurred when processing response"
+            }), 500
     
     # For regular requests, render the error template
-    return render_template('error.html', message=str(e)), 500
+    try:
+        return render_template('error.html', message=str(e)), 500
+    except Exception:
+        # If template rendering fails, return a simple error
+        return "Internal server error", 500
 
 def start_web_app(host='0.0.0.0', port=5000, debug=True):
     """Start the Flask web application"""
