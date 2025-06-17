@@ -253,22 +253,54 @@
                     <td id="motileCount">-</td>
                 </tr>
                 <tr>
+                    <td>Immotile Sperm</td>
+                    <td id="immotileCount">-</td>
+                </tr>
+                <tr>
                     <td>Motility Percentage</td>
                     <td id="motilityPercent">-</td>
                 </tr>
                 <tr>
-                    <td>Average VCL</td>
-                    <td id="avgVCL">-</td>
+                    <td>Curvilinear Velocity (VCL)</td>
+                    <td id="vcl">-</td>
                 </tr>
                 <tr>
-                    <td>Average VSL</td>
-                    <td id="avgVSL">-</td>
+                    <td>Straight-line Velocity (VSL)</td>
+                    <td id="vsl">-</td>
+                </tr>
+                <tr>
+                    <td>Average Path Velocity (VAP)</td>
+                    <td id="vap">-</td>
                 </tr>
                 <tr>
                     <td>Linearity (LIN)</td>
                     <td id="lin">-</td>
                 </tr>
+                <tr>
+                    <td>Wobble (WOB)</td>
+                    <td id="wobble">-</td>
+                </tr>
+                <tr>
+                    <td>Progression (PROG)</td>
+                    <td id="progression">-</td>
+                </tr>
+                <tr>
+                    <td>Beat-cross Frequency (BCF)</td>
+                    <td id="bcf">-</td>
+                </tr>
             </table>
+            
+            <h3 style="margin-top: 30px;">Visualizations</h3>
+            <div style="display: flex; flex-wrap: wrap; gap: 20px; margin-top: 20px;">
+                <div style="flex: 1; min-width: 300px;">
+                    <h4>Sperm Trajectories</h4>
+                    <img id="trajectoryImg" src="" alt="Sperm Trajectories" style="width: 100%; max-width: 500px; border: 1px solid #ddd; border-radius: 5px;">
+                </div>
+                <div style="flex: 1; min-width: 300px;">
+                    <h4>Velocity Distributions</h4>
+                    <img id="velocityImg" src="" alt="Velocity Distributions" style="width: 100%; max-width: 600px; border: 1px solid #ddd; border-radius: 5px;">
+                </div>
+            </div>
             
             <div class="result-actions">
                 <a href="#" class="view-report primary-action" id="viewReport" style="padding: 1.2rem 3rem; font-size: 1.25rem; min-width: 220px; text-align: center;">View Full Report</a>
@@ -306,16 +338,13 @@
             const viewReportLink = document.getElementById('viewReport');
             const retryBtn = document.getElementById('retryBtn');
             
-            // Get values from hidden fields
-            const filepath = document.getElementById('filepathField').value;
-            const sessionId = document.getElementById('sessionIdField').value;
-            const debugMode = document.getElementById('debugModeField').value === 'true';
-            
             // Check if running on Render.com (will be determined by server)
+            let isRenderDeploy = false;
             fetch('/check-environment')
                 .then(response => response.json())
                 .then(data => {
-                    if (data.is_render) {
+                    isRenderDeploy = data.is_render;
+                    if (isRenderDeploy) {
                         document.getElementById('renderNotice').style.display = 'block';
                     }
                 })
@@ -330,23 +359,43 @@
                 document.getElementById('step5')
             ];
             
-            // Debug helper
-            function debugLog(message) {
-                if (debugMode) {
-                    console.log("[DEBUG] " + message);
-                }
-            }
+            // Get form data
+            const filepath = document.getElementById('filepathField').value;
+            const session_id = document.getElementById('sessionIdField').value;
+            const debugMode = document.getElementById('debugModeField').value === 'true';
             
-            function showAlert(message, isError = false) {
-                alertContainer.innerHTML = `<div class="alert${isError ? ' alert-error' : ' alert-success'}">${message}</div>`;
+            // Generate simulated data for demo mode
+            function generateSimulatedData() {
+                // Generate random values for demonstration
+                const totalCount = Math.floor(Math.random() * 90) + 30; // 30-120 sperm cells
+                const motileCount = Math.floor(totalCount * (Math.random() * 0.4 + 0.5)); // 50-90% motile
+                const immotileCount = totalCount - motileCount;
+                const motilityPercent = (motileCount / totalCount) * 100;
+                const vcl = Math.random() * 30 + 40; // 40-70 μm/s
+                const vsl = vcl * (Math.random() * 0.3 + 0.5); // 50-80% of VCL
+                const vap = (vcl + vsl) / 2 * (Math.random() * 0.2 + 0.9); // Between VCL and VSL
+                const lin = vsl / vcl;
+                const wobble = Math.random() * 0.3 + 0.6; // 0.6-0.9
+                const progression = Math.random() * 0.3 + 0.5; // 0.5-0.8
+                const bcf = Math.random() * 5 + 10; // 10-15 Hz
                 
-                // Auto-hide after 5 seconds
-                setTimeout(() => {
-                    alertContainer.innerHTML = '';
-                }, 5000);
+                return {
+                    total_count: totalCount,
+                    motile_count: motileCount,
+                    immotile_count: immotileCount,
+                    motility_percent: motilityPercent,
+                    vcl: vcl,
+                    vsl: vsl,
+                    vap: vap,
+                    lin: lin,
+                    wobble: wobble,
+                    progression: progression,
+                    bcf: bcf
+                };
             }
             
-            function updateProcessingStep(stepIndex, status) {
+            // Function to update processing step
+            function updateProcessingStep(stepIndex, status = 'active') {
                 // Reset all steps
                 if (status === 'reset') {
                     steps.forEach(step => {
@@ -355,28 +404,46 @@
                     return;
                 }
                 
-                // Update specific step
-                if (stepIndex >= 0 && stepIndex < steps.length) {
-                    if (status === 'active') {
-                        steps[stepIndex].className = 'processing-step active';
-                        
-                        // Mark previous steps as completed
-                        for (let i = 0; i < stepIndex; i++) {
-                            steps[i].className = 'processing-step completed';
-                        }
-                    } else if (status === 'completed') {
-                        steps[stepIndex].className = 'processing-step completed';
-                    }
+                // Mark previous steps as completed
+                for (let i = 0; i < stepIndex; i++) {
+                    steps[i].className = 'processing-step completed';
+                }
+                
+                // Mark current step as active
+                if (stepIndex < steps.length) {
+                    steps[stepIndex].className = 'processing-step active';
                 }
             }
             
-            // Retry button handler
+            // Function to show an alert
+            function showAlert(message, isError = false) {
+                const alertDiv = document.createElement('div');
+                alertDiv.className = isError ? 'alert alert-error' : 'alert alert-success';
+                alertDiv.textContent = message;
+                
+                alertContainer.innerHTML = '';
+                alertContainer.appendChild(alertDiv);
+                
+                // Auto-hide after 5 seconds if it's a success message
+                if (!isError) {
+                    setTimeout(() => {
+                        alertDiv.style.opacity = '0';
+                        setTimeout(() => {
+                            if (alertContainer.contains(alertDiv)) {
+                                alertContainer.removeChild(alertDiv);
+                            }
+                        }, 500);
+                    }, 5000);
+                }
+            }
+            
+            // Handle retry button
             retryBtn.addEventListener('click', function() {
                 errorContainer.style.display = 'none';
                 analysisContainer.style.display = 'block';
             });
             
-            // Cancel button handler
+            // Handle cancel button
             cancelBtn.addEventListener('click', function() {
                 if (confirm('Are you sure you want to cancel the analysis?')) {
                     processingContainer.style.display = 'none';
@@ -385,175 +452,157 @@
                 }
             });
             
+            // Handle form submission
             analysisForm.addEventListener('submit', function(e) {
                 e.preventDefault();
-                debugLog("Form submitted");
                 
                 // Get max frames value
-                const maxFrames = parseInt(document.getElementById('maxFrames').value);
-                debugLog("Max frames: " + maxFrames);
+                const maxFrames = document.getElementById('maxFrames').value;
                 
                 // Hide form, show processing
                 analysisContainer.style.display = 'none';
                 processingContainer.style.display = 'block';
                 
-                // Reset steps and activate first step
-                updateProcessingStep(0, 'reset');
-                updateProcessingStep(0, 'active');
+                // Initialize progress
+                progressFill.style.width = '0%';
+                statusText.textContent = 'Starting analysis...';
+                updateProcessingStep(0);
                 
-                // Progress animation is handled by CSS
-                statusText.textContent = "Loading video...";
-                debugLog("Starting AJAX request");
-                debugLog("Filepath: " + filepath);
-                debugLog("Session ID: " + sessionId);
-                
-                // Simulate step progression
-                let currentStep = 0;
-                let progress = 0;
-                
-                const stepInterval = setInterval(() => {
-                    progress += 5;
+                // Function to simulate progress
+                function simulateProgress(callback) {
+                    let progress = 0;
+                    const steps = [
+                        { percent: 20, message: 'Loading video frames...', step: 0 },
+                        { percent: 40, message: 'Detecting sperm cells...', step: 1 },
+                        { percent: 60, message: 'Tracking trajectories...', step: 2 },
+                        { percent: 80, message: 'Calculating motility parameters...', step: 3 },
+                        { percent: 95, message: 'Generating visualizations...', step: 4 },
+                        { percent: 100, message: 'Analysis complete!', step: 5 }
+                    ];
                     
-                    if (progress >= 20 && currentStep === 0) {
-                        currentStep = 1;
-                        updateProcessingStep(currentStep, 'active');
-                        statusText.textContent = "Detecting sperm cells...";
-                    } else if (progress >= 40 && currentStep === 1) {
-                        currentStep = 2;
-                        updateProcessingStep(currentStep, 'active');
-                        statusText.textContent = "Tracking trajectories...";
-                    } else if (progress >= 60 && currentStep === 2) {
-                        currentStep = 3;
-                        updateProcessingStep(currentStep, 'active');
-                        statusText.textContent = "Analyzing motility parameters...";
-                    } else if (progress >= 80 && currentStep === 3) {
-                        currentStep = 4;
-                        updateProcessingStep(currentStep, 'active');
-                        statusText.textContent = "Generating visualizations...";
-                    }
+                    let currentStep = 0;
                     
-                    progressFill.style.width = `${Math.min(progress, 95)}%`;
-                }, 500);
-                
-                // Send AJAX request to analyze video
-                debugLog("Starting fetch request to /analyze endpoint");
-                
-                // Create an abort controller for timeout
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 180000); // 180 seconds timeout for Render
-                
-                // Fetch with abort signal
-                fetch('/analyze', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        filepath: filepath,
-                        session_id: sessionId,
-                        debug: debugMode,
-                        max_frames: maxFrames
-                    }),
-                    signal: controller.signal
-                })
-                .then(response => {
-                    clearTimeout(timeoutId); // Clear timeout on successful response
-                    debugLog("Response received: " + response.status);
-                    if (!response.ok) {
-                        try {
-                            return response.json().then(data => {
-                                throw new Error(data.error || `HTTP error! Status: ${response.status}`);
-                            }).catch(jsonErr => {
-                                // Handle case where response is not valid JSON
-                                throw new Error(`HTTP error! Status: ${response.status}. Details: ${response.statusText}`);
-                            });
-                        } catch (parseErr) {
-                            throw new Error(`HTTP error! Status: ${response.status}. Could not parse response.`);
+                    const interval = setInterval(() => {
+                        if (currentStep < steps.length) {
+                            const step = steps[currentStep];
+                            progress = step.percent;
+                            progressFill.style.width = `${progress}%`;
+                            statusText.textContent = step.message;
+                            updateProcessingStep(step.step);
+                            currentStep++;
+                        } else {
+                            clearInterval(interval);
+                            if (callback) callback();
                         }
-                    }
-                    return response.json().catch(err => {
-                        throw new Error("Failed to parse server response as JSON. The server may be overloaded.");
-                    });
-                })
-                .then(data => {
-                    debugLog("Data received: " + JSON.stringify(data));
-                    clearInterval(stepInterval);
-                    
-                    if (data.success) {
-                        // Complete all steps
-                        for (let i = 0; i <= 4; i++) {
-                            updateProcessingStep(i, 'completed');
-                        }
+                    }, 1000);
+                }
+                
+                // If running on Render, use client-side simulation
+                if (isRenderDeploy) {
+                    // Simulate progress
+                    simulateProgress(() => {
+                        // Generate simulated data
+                        const results = generateSimulatedData();
                         
-                        progressFill.style.width = '100%';
-                        statusText.textContent = "Analysis complete!";
+                        // Update results in the DOM
+                        document.getElementById('totalCount').textContent = results.total_count;
+                        document.getElementById('motileCount').textContent = results.motile_count;
+                        document.getElementById('immotileCount').textContent = results.immotile_count;
+                        document.getElementById('motilityPercent').textContent = results.motility_percent.toFixed(1) + '%';
+                        document.getElementById('vcl').textContent = results.vcl.toFixed(1) + ' μm/s';
+                        document.getElementById('vsl').textContent = results.vsl.toFixed(1) + ' μm/s';
+                        document.getElementById('vap').textContent = results.vap.toFixed(1) + ' μm/s';
+                        document.getElementById('lin').textContent = results.lin.toFixed(2);
+                        document.getElementById('wobble').textContent = results.wobble.toFixed(2);
+                        document.getElementById('progression').textContent = results.progression.toFixed(2);
+                        document.getElementById('bcf').textContent = results.bcf.toFixed(1) + ' Hz';
                         
-                        // Display results
-                        document.getElementById('totalCount').textContent = data.summary.total_count;
-                        document.getElementById('motileCount').textContent = data.summary.motile_count;
-                        document.getElementById('motilityPercent').textContent = 
-                            `${data.summary.motility_percent.toFixed(1)}%`;
-                        document.getElementById('avgVCL').textContent = 
-                            `${data.summary.vcl.toFixed(2)} μm/s`;
-                        document.getElementById('avgVSL').textContent = 
-                            `${data.summary.vsl.toFixed(2)} μm/s`;
-                        document.getElementById('lin').textContent = data.summary.lin.toFixed(2);
+                        // Show simulated images
+                        document.getElementById('trajectoryImg').src = '/static/images/sample_trajectory.png';
+                        document.getElementById('velocityImg').src = '/static/images/sample_velocity.png';
                         
-                        // Set report link
-                        viewReportLink.href = data.summary.report_url;
-                        
-                        // Show results after a short delay
+                        // Show results
                         setTimeout(() => {
                             processingContainer.style.display = 'none';
                             resultsContainer.style.display = 'block';
                             resultsContainer.classList.add('fade-in');
                             resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            
+                            // Show demo mode notice
+                            showAlert('Demo Mode: This is simulated data. For real analysis, please run the application locally.', false);
                         }, 1000);
-                    } else {
-                        processingContainer.style.display = 'none';
-                        showAlert(data.error || "An error occurred during analysis", true);
-                        errorMessage.textContent = data.error || "An error occurred";
-                        if (data.details) {
-                            errorDetails.textContent = data.details;
-                            errorDetails.style.display = 'block';
+                    });
+                } else {
+                    // For non-Render deployments, use the regular server-side analysis
+                    const requestData = {
+                        filepath: filepath,
+                        session_id: session_id,
+                        debug: debugMode,
+                        max_frames: parseInt(maxFrames)
+                    };
+                    
+                    // Send analysis request
+                    fetch('/analyze', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(requestData)
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.json().then(data => {
+                                throw new Error(data.error || `HTTP error! Status: ${response.status}`);
+                            });
                         }
-                        errorContainer.style.display = 'block';
-                        errorContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
-                })
-                .catch(error => {
-                    clearTimeout(timeoutId); // Clear timeout on error
-                    debugLog("Error: " + error.message);
-                    clearInterval(stepInterval);
-                    processingContainer.style.display = 'none';
-                    
-                    // Try to provide more specific error messages based on common issues
-                    let errorMsg = "Failed to communicate with server: " + error.message;
-                    
-                    if (error.message === "Failed to fetch") {
-                        errorMsg = "Failed to connect to server. Please check that the server is running and refresh the page.";
-                    } else if (error.message.includes("NetworkError")) {
-                        errorMsg = "Network error. The server may be overloaded or connection was interrupted.";
-                    } else if (error.message.includes("timeout")) {
-                        errorMsg = "Request timed out. On the free tier, processing may take longer than expected. Try again with a shorter video or reduce the max frames.";
-                    } else if (error.message.includes("JSON")) {
-                        errorMsg = "Error processing server response. The server may be returning invalid data.";
-                    } else if (error.message.includes("503")) {
-                        errorMsg = "The server is temporarily unavailable due to resource constraints. This is common on free hosting - please try again in a few minutes.";
-                    }
-                    
-                    showAlert(errorMsg, true);
-                    errorMessage.textContent = errorMsg;
-                    
-                    // Show a retry button more prominently
-                    document.getElementById('retryBtn').style.backgroundColor = '#2ecc71';
-                    document.getElementById('retryBtn').style.padding = '10px 20px';
-                    document.getElementById('retryBtn').style.fontSize = '1.1rem';
-                    
-                    errorContainer.style.display = 'block';
-                    errorContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    console.error('Error:', error);
-                });
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            // Update progress to 100%
+                            progressFill.style.width = '100%';
+                            statusText.textContent = 'Analysis complete!';
+                            updateProcessingStep(5);
+                            
+                            // Update results in the DOM
+                            document.getElementById('totalCount').textContent = data.results.total_count;
+                            document.getElementById('motileCount').textContent = data.results.motile_count;
+                            document.getElementById('immotileCount').textContent = data.results.immotile_count;
+                            document.getElementById('motilityPercent').textContent = data.results.motility_percent.toFixed(1) + '%';
+                            document.getElementById('vcl').textContent = data.results.vcl.toFixed(1) + ' μm/s';
+                            document.getElementById('vsl').textContent = data.results.vsl.toFixed(1) + ' μm/s';
+                            document.getElementById('vap').textContent = data.results.vap.toFixed(1) + ' μm/s';
+                            document.getElementById('lin').textContent = data.results.lin.toFixed(2);
+                            document.getElementById('wobble').textContent = data.results.wobble.toFixed(2);
+                            document.getElementById('progression').textContent = data.results.progression.toFixed(2);
+                            document.getElementById('bcf').textContent = data.results.bcf.toFixed(1) + ' Hz';
+                            
+                            // Update images
+                            document.getElementById('trajectoryImg').src = `data:image/png;base64,${data.trajectories_base64}`;
+                            document.getElementById('velocityImg').src = `data:image/png;base64,${data.velocity_base64}`;
+                            
+                            // Update report link
+                            viewReportLink.href = data.report_url;
+                            
+                            // Show results
+                            setTimeout(() => {
+                                processingContainer.style.display = 'none';
+                                resultsContainer.style.display = 'block';
+                                resultsContainer.classList.add('fade-in');
+                                resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }, 1000);
+                        } else {
+                            showAlert(`Analysis failed: ${data.error}`, true);
+                            processingContainer.style.display = 'none';
+                            analysisContainer.style.display = 'block';
+                        }
+                    })
+                    .catch(error => {
+                        showAlert(`Error: ${error.message}`, true);
+                        processingContainer.style.display = 'none';
+                        analysisContainer.style.display = 'block';
+                    });
+                }
             });
         });
     </script>
